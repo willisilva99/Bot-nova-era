@@ -5,8 +5,8 @@ from flask import Flask, jsonify
 import threading
 from flask_cors import CORS
 
-# Token do seu bot (substitua pelo seu token)
-TOKEN = 'MTI1MzgzODcyMDkzOTg1NTg5Mg.GB2b2C.Afysclq9rZgpgwgbli4EuSafnn3e8gXAWmcCKg'
+# Pega o token da variável de ambiente
+TOKEN = os.getenv('TOKEN')
 
 # Configurações dos "intents" para o bot
 intents = discord.Intents.default()
