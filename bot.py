@@ -233,6 +233,18 @@ async def listar_jogadores_online(ctx):
 
         await ctx.send(resposta)
 
+@bot.command(name='roleta_russa')
+async def roleta_russa(ctx):
+    """Simula uma roleta russa apocalíptica."""
+    bala = random.randint(1, 6)  # Define um número aleatório de 1 a 6 para representar a bala no tambor
+    tiro = random.randint(1, 6)  # Define um número aleatório de 1 a 6 para o tiro
+
+    if bala == tiro:
+        await ctx.send(f"💥 *Clique!* Você sobreviveu... desta vez.")
+    else:
+        await ctx.send(f"💥 *Bang!* {ctx.author.mention}, você não teve tanta sorte...")
+
+
 # ---- Parte do Flask ----
 
 app = Flask(__name__)
