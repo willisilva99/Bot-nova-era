@@ -274,6 +274,26 @@ def get_destaques():
     } for member in role.members]
 
     return jsonify(members)
+    
+@app.route('/jogadores_online')
+def jogadores_online():
+    guild = bot.get_guild(1186390028990025820)  # Certifique-se de que este ID está correto
+    if guild is None:
+        print("Erro: Servidor Discord não encontrado.")
+        return jsonify({'error': 'Servidor não encontrado'}), 404
+
+    membros_online = [{
+        'id': member.id,
+        'username': member.name,
+        'status': str(member.status).capitalize(),
+        'avatar': member.avatar.url if member.avatar else None
+    } for member in guild.members if member.status != discord.Status.offline and not member.bot]
+
+    if not membros_online:
+        print("Nenhum jogador online no momento.")
+        return jsonify([])  # Retorna lista vazia
+
+    return jsonify(membros_online)
 
 
 
