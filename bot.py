@@ -159,10 +159,9 @@ async def futuro(ctx):
     await ctx.send(f"🔮 **O Futuro no Apocalipse diz:** {mensagem}")
 
 # ---- Comando para listar jogadores online ----
-
-# ---- Parte do Flask ----
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})  # Configura o CORS para permitir qualquer origem
+# Permite acessos de qualquer origem
+CORS(app, resources={r"/*": {"origins": "*"}})  # Permite qualquer origem
 
 @bot.command(name='listar_jogadores_online')
 async def listar_jogadores_online(ctx):
