@@ -160,6 +160,10 @@ async def futuro(ctx):
 
 # ---- Comando para listar jogadores online ----
 
+# ---- Parte do Flask ----
+app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}})  # Configura o CORS para permitir qualquer origem
+
 @bot.command(name='listar_jogadores_online')
 async def listar_jogadores_online(ctx):
     """Lista os jogadores online no servidor no estilo apocalíptico, com apelidos destacados e mensagens aleatórias."""
