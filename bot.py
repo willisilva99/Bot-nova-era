@@ -1,58 +1,38 @@
-import os
 import discord
 from discord.ext import commands
+import random
 
-# Configurações e Token
-TOKEN = os.getenv('TOKEN')  # Certifique-se de que essa variável está corretamente configurada no ambiente Railway
-intents = discord.Intents.default()
-intents.message_content = True
-bot = commands.Bot(command_prefix='!', intents=intents)
+bot = commands.Bot(command_prefix="!")
 
-# Defina o ID do canal onde as mensagens de prêmios serão enviadas
-CHANNEL_ID = 1186636197934661632
-
-# Itens e chances
-items = [
-    {"name": "AK47", "image": "images/ak47.png", "chance": 5},
-    {"name": "VIP", "image": "images/vip.png", "chance": 5},
-    {"name": "GIROCOPITERO", "image": "images/giro.png", "chance": 5},
-    {"name": "MOTO", "image": "images/moto.png", "chance": 5},
-    {"name": "3.000 EMBERS", "image": "images/ember.png", "chance": 10},
-    {"name": "SEM SORTE", "image": "images/fail.png", "chance": 70}
+# Lista de prêmios com as imagens atualizadas
+prizes = [
+    {"name": "AK47", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144266105618573/ak47.png?ex=66ff074d&is=66fdb5cd&hm=a99d2330c123bd5add6a73dc89dc1d6f9d34018e7cb65f4934ac8201c4611949&=&format=webp&quality=lossless&width=176&height=176"},
+    {"name": "VIP", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144289367228446/vip.png?ex=66ff0752&is=66fdb5d2&hm=2bef9e8b92217199e41d1a801c5ce4c0867a6c1e3df08220af03b362da589447&=&format=webp&quality=lossless&width=517&height=165"},
+    {"name": "GIROCOPITERO", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144105841393694/drop-aberto.png?ex=66ff0727&is=66fdb5a7&hm=781d4875800217af3b9898bba186b5cf56c94a76c55b95e1f2584fca8a22bb1d&=&format=webp&quality=lossless&width=619&height=619"},
+    {"name": "MOTO", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144223407607869/moto.png?ex=66ff0743&is=66fdb5c3&hm=106ebe00732e5cfcd749c696ae7a2540743e89aa7a273960f39244982dddaf73&=&format=webp&quality=lossless&width=176&height=176"},
+    {"name": "3.000 EMBERS", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144200271695962/ember.png?ex=66ff073d&is=66fdb5bd&hm=c8a2cfee6c021fc3704432d99773dec10153b931467e073199a491210ae1be65&=&format=webp&quality=lossless&width=385&height=385"},
+    {"name": "SEM SORTE", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144175944863784/fail.png?ex=66ff0737&is=66fdb5b7&hm=02abcf68da7473f54d7b5b221f15ae6cb47aeb4402c839ac6450cb5525409153&=&format=webp&quality=lossless&width=619&height=619"}
 ]
 
-# Função para enviar a mensagem de prêmio no Discord
-async def enviar_mensagem_premio(jogador, item_ganho):
-    canal = bot.get_channel(CHANNEL_ID)
-    if canal:
-        if item_ganho["name"] == "SEM SORTE":
-            await canal.send(f"Infelizmente, {jogador}, você não teve sorte desta vez. Tente novamente em 2 horas!")
-        else:
-            await canal.send(f"Parabéns, {jogador}! Você ganhou o prêmio: **{item_ganho['name']}** 🎉")
-
-# Evento quando o bot estiver pronto
-@bot.event
-async def on_ready():
-    print(f'Bot conectado como {bot.user}')
-
-# Função de premiação que será chamada quando o jogador abrir a caixa
-def abrir_caixa(jogador):
-    import random
-    total_chance = sum(item['chance'] for item in items)
-    sorteio = random.uniform(0, total_chance)
-    acumulado = 0
-    for item in items:
-        acumulado += item['chance']
-        if sorteio <= acumulado:
-            return item
-
-# Simulação da função para abrir a caixa e notificar o jogador no Discord
+# Comando para abrir a caixa
 @bot.command()
-async def abrir(ctx):
-    jogador = ctx.author.display_name  # Pega o nome do jogador
-    item_ganho = abrir_caixa(jogador)  # Sorteia o prêmio
-    await enviar_mensagem_premio(jogador, item_ganho)  # Envia o prêmio ao canal do Discord
-    await ctx.send(f"Caixa aberta por {jogador}. Confira o canal de prêmios no Discord!")  # Confirmação no chat
+async def abrir_caixa(ctx):
+    # Menciona o jogador que abriu a caixa
+    user = ctx.message.author.mention
+    
+    # Sorteia um prêmio aleatoriamente
+    prize = random.choice(prizes)
+    
+    # Cria o embed com a imagem do prêmio ou da caixa fechada
+    embed = discord.Embed(
+        title="🎁 Você abriu a Caixa de Presentes!",
+        description=f"{user}, você ganhou: **{prize['name']}**!",
+        color=discord.Color.gold()
+    )
+    embed.set_image(url=prize['image'])
 
-# Iniciar o bot
-bot.run(TOKEN)
+    # Envia a mensagem com o embed no canal
+    await ctx.send(embed=embed)
+
+# Rodando o bot
+bot.run("SEU_TOKEN_AQUI")
