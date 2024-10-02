@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands, tasks
 import random
 import time
+import os
 
 # Definindo intents necessários
 intents = discord.Intents.default()
@@ -95,5 +96,6 @@ async def abrir_caixa(ctx):
     # Atualiza o tempo da última tentativa do jogador
     last_attempt_time[user.id] = time.time()
 
-# Rodando o bot
-bot.run("SEU_TOKEN_AQUI")
+# Rodando o bot com o token de ambiente
+TOKEN = os.getenv('TOKEN')
+bot.run(TOKEN)
