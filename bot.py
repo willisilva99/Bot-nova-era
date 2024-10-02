@@ -1,56 +1,58 @@
 import os
 import discord
-from discord.ext import commands, tasks
-from flask import Flask, jsonify, request
-import threading
-from flask_cors import CORS
-import asyncio
+from discord.ext import commands
 
-# Pega o token da variável de ambiente
-TOKEN = os.getenv('TOKEN')
-CHANNEL_ID = 1186636197934661632  # Substitua pelo ID do canal correto
-
-# Configurações dos "intents" para o bot
+# Configurações e Token
+TOKEN = os.getenv('TOKEN')  # Certifique-se de que essa variável está corretamente configurada no ambiente Railway
 intents = discord.Intents.default()
 intents.message_content = True
-intents.members = True
-intents.presences = True
-
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# ---- API Flask ----
-app = Flask(__name__)
-CORS(app)
+# Defina o ID do canal onde as mensagens de prêmios serão enviadas
+CHANNEL_ID = 1186636197934661632
 
-@app.route('/')
-def home():
-    return jsonify({'status': 'Bot está online e rodando!'})
+# Itens e chances
+items = [
+    {"name": "AK47", "image": "images/ak47.png", "chance": 5},
+    {"name": "VIP", "image": "images/vip.png", "chance": 5},
+    {"name": "GIROCOPITERO", "image": "images/giro.png", "chance": 5},
+    {"name": "MOTO", "image": "images/moto.png", "chance": 5},
+    {"name": "3.000 EMBERS", "image": "images/ember.png", "chance": 10},
+    {"name": "SEM SORTE", "image": "images/fail.png", "chance": 70}
+]
 
-# Endpoint para receber a mensagem do prêmio e postar no chat do Discord
-@app.route('/post_reward', methods=['POST'])
-def post_reward():
-    data = request.json
-    if 'player' in data and 'item' in data:
-        player = data['player']
-        item = data['item']
-        message = f'{player} abriu a Caixa de Presentes e ganhou: **{item}**!'
-        channel = bot.get_channel(CHANNEL_ID)
-        if channel:
-            asyncio.run_coroutine_threadsafe(channel.send(message), bot.loop)
-        return jsonify({'status': 'Mensagem enviada para o Discord'}), 200
-    else:
-        return jsonify({'error': 'Dados inválidos'}), 400
+# Função para enviar a mensagem de prêmio no Discord
+async def enviar_mensagem_premio(jogador, item_ganho):
+    canal = bot.get_channel(CHANNEL_ID)
+    if canal:
+        if item_ganho["name"] == "SEM SORTE":
+            await canal.send(f"Infelizmente, {jogador}, você não teve sorte desta vez. Tente novamente em 2 horas!")
+        else:
+            await canal.send(f"Parabéns, {jogador}! Você ganhou o prêmio: **{item_ganho['name']}** 🎉")
 
-# Função para rodar a API Flask em uma thread separada
-def run_api():
-    port = int(os.environ.get('PORT', 5000))  # Railway usa a variável de ambiente PORT
-    app.run(host='0.0.0.0', port=port)
+# Evento quando o bot estiver pronto
+@bot.event
+async def on_ready():
+    print(f'Bot conectado como {bot.user}')
 
-# Função para rodar o bot e a API ao mesmo tempo
-def run_bot():
-    bot.run(TOKEN)
+# Função de premiação que será chamada quando o jogador abrir a caixa
+def abrir_caixa(jogador):
+    import random
+    total_chance = sum(item['chance'] for item in items)
+    sorteio = random.uniform(0, total_chance)
+    acumulado = 0
+    for item in items:
+        acumulado += item['chance']
+        if sorteio <= acumulado:
+            return item
 
-# Iniciar as threads
-if __name__ == '__main__':
-    threading.Thread(target=run_api).start()
-    run_bot()
+# Simulação da função para abrir a caixa e notificar o jogador no Discord
+@bot.command()
+async def abrir(ctx):
+    jogador = ctx.author.display_name  # Pega o nome do jogador
+    item_ganho = abrir_caixa(jogador)  # Sorteia o prêmio
+    await enviar_mensagem_premio(jogador, item_ganho)  # Envia o prêmio ao canal do Discord
+    await ctx.send(f"Caixa aberta por {jogador}. Confira o canal de prêmios no Discord!")  # Confirmação no chat
+
+# Iniciar o bot
+bot.run(TOKEN)
