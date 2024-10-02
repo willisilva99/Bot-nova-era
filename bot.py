@@ -96,6 +96,24 @@ async def abrir_caixa(ctx):
     # Atualiza o tempo da última tentativa do jogador
     last_attempt_time[user.id] = time.time()
 
+# Função para mudar o status do bot periodicamente
+@tasks.loop(minutes=5)
+async def mudar_status():
+    status_list = [
+        "sobrevivendo ao apocalipse",
+        "enfrentando hordas de zumbis",
+        "explorando novas bases",
+        "coletando suprimentos",
+        "protegendo o refúgio"
+    ]
+    await bot.change_presence(activity=discord.Game(random.choice(status_list)))
+
+# Evento quando o bot fica online
+@bot.event
+async def on_ready():
+    print(f"Bot conectado como {bot.user}")
+    mudar_status.start()  # Inicia o loop de status
+
 # Rodando o bot com o token de ambiente
 TOKEN = os.getenv('TOKEN')
 bot.run(TOKEN)
