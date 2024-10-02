@@ -56,14 +56,14 @@ def escolher_premio():
 
 # Função para calcular o tempo restante para o próximo sorteio
 def tempo_restante(last_time):
-    return max(0, 3600 - (time.time() - last_time))  # 1 hora = 3600 segundos
+    return max(0, 10800 - (time.time() - last_time))  # 3 horas = 10800 segundos
 
 # Comando para abrir a caixa
 @bot.command()
 async def abrir_caixa(ctx):
     user = ctx.message.author
 
-    # Verifica se o jogador já tentou nos últimos 60 minutos
+    # Verifica se o jogador já tentou nos últimos 3 horas
     if user.id in last_attempt_time:
         tempo_rest = tempo_restante(last_attempt_time[user.id])
         if tempo_rest > 0:
