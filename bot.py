@@ -130,7 +130,6 @@ mensagens_com_sorte = [
     "Os ventos da destruição não foram páreos para sua vitória!"
 ]
 
-]
 
 # Dicionário para armazenar o último tempo de sorteio de cada jogador
 last_attempt_time = {}
