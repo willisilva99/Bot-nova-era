@@ -198,6 +198,14 @@ async def mudar_status():
     ]
     await bot.change_presence(activity=discord.Game(random.choice(status_list)))
 
+# ---- Comando para compartilhar o link do grupo do WhatsApp ----
+@bot.command(name='grupo')
+async def grupo(ctx):
+    """Compartilha o link do grupo de WhatsApp."""
+    link_grupo = "https://chat.whatsapp.com/ILn1A5UKIXwBpL7voHsDBo"
+    await ctx.send(f"📱 **Entre no nosso grupo do WhatsApp:** {link_grupo}")
+
+
 # Evento quando o bot fica online
 @bot.event
 async def on_ready():
