@@ -15,16 +15,16 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Lista de prêmios com as imagens e suas respectivas probabilidades
 prizes = [
-    {"name": "AK47", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144266105618573/ak47.png", "chance": 2},  # 2% de chance
-    {"name": "VIP", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144289367228446/vip.png", "chance": 3},  # 3% de chance
-    {"name": "GIROCOPITERO", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144105841393694/drop-aberto.png", "chance": 2},  # 2% de chance
-    {"name": "MOTO", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144223407607869/moto.png", "chance": 2},  # 2% de chance
-    {"name": "3.000 EMBERS", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144200271695962/ember.png", "chance": 8},  # 5% de chance
-    {"name": "SEM SORTE", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144175944863784/fail.png", "chance": 82}  # 87% de chance
+    {"name": "AK47", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144266105618573/ak47.png", "chance": 2},
+    {"name": "VIP", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144289367228446/vip.png", "chance": 3},
+    {"name": "GIROCOPITERO", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144105841393694/drop-aberto.png", "chance": 2},
+    {"name": "MOTO", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144223407607869/moto.png", "chance": 2},
+    {"name": "3.000 EMBERS", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144200271695962/ember.png", "chance": 8},
+    {"name": "SEM SORTE", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144175944863784/fail.png", "chance": 82}
 ]
 
-mensagens_sem_sorte = [
-    "Os céus escureceram e os ventos trazem más notícias... hoje não é seu dia de sorte!",
+# Mensagens de azar e sorte
+mensagens_sem_sorte = [   "Os céus escureceram e os ventos trazem más notícias... hoje não é seu dia de sorte!",
     "As hordas estão crescendo e a sorte está se esvaindo... tente novamente mais tarde!",
     "Você caminhou em vão, o apocalipse não perdoa... talvez a próxima vez seja melhor.",
     "O sol se pôs e com ele sua sorte... os zumbis se aproximam, melhor se preparar!",
@@ -73,12 +73,8 @@ mensagens_sem_sorte = [
     "Sua jornada foi longa, mas a sorte não cruzou seu caminho desta vez.",
     "O destino não sorriu para você hoje... mas a luta continua.",
     "Você enfrentou os horrores do apocalipse, mas a sorte permaneceu nas sombras.",
-    "Nem mesmo o brilho da lua pôde iluminar sua sorte hoje. Quem sabe amanhã?"
-]
-
-
-mensagens_com_sorte = [
-    "O apocalipse pode ser sombrio, mas hoje você brilhou!",
+    "Nem mesmo o brilho da lua pôde iluminar sua sorte hoje. Quem sabe amanhã?" ]  # Listas das mensagens permanecem as mesmas
+mensagens_com_sorte = [ "O apocalipse pode ser sombrio, mas hoje você brilhou!",
     "Sua sorte virou as costas para os zumbis, parabéns pelo prêmio!",
     "O destino sorriu para você hoje... aproveite seu prêmio!",
     "Em meio ao caos, você emergiu vitorioso. Parabéns!",
@@ -127,12 +123,12 @@ mensagens_com_sorte = [
     "Você trouxe luz ao apocalipse com sua vitória. Parabéns!",
     "Seu nome será lembrado como o vencedor em meio ao caos!",
     "Sua coragem e sorte iluminaram as ruínas. Aproveite!",
-    "Os ventos da destruição não foram páreos para sua vitória!"
-]
-
+    "Os ventos da destruição não foram páreos para sua vitória!" ]
 
 # Dicionário para armazenar o último tempo de sorteio de cada jogador
 last_attempt_time = {}
+player_prizes = {}  # Dicionário para armazenar os prêmios ganhos por cada jogador
+player_box_opens = {}  # Dicionário para contar o número de caixas abertas por cada jogador
 
 # Função para selecionar um prêmio com base nas chances
 def escolher_premio():
@@ -171,6 +167,10 @@ async def abrir_caixa(ctx):
         mensagem = random.choice(mensagens_sem_sorte)
     else:
         mensagem = random.choice(mensagens_com_sorte)
+        player_prizes[user.id] = player_prizes.get(user.id, []) + [prize["name"]]  # Armazena o prêmio
+
+    # Incrementa o contador de caixas abertas
+    player_box_opens[user.id] = player_box_opens.get(user.id, 0) + 1
 
     # Cria o embed com a imagem do prêmio ou da mensagem de azar
     embed = discord.Embed(
@@ -186,6 +186,34 @@ async def abrir_caixa(ctx):
     # Atualiza o tempo da última tentativa do jogador
     last_attempt_time[user.id] = time.time()
 
+# Função para exibir o ranking dos melhores prêmios
+@tasks.loop(hours=5)
+async def rank_melhores_presentes():
+    # Ordena os jogadores pelos prêmios mais raros
+    rank = sorted(player_prizes.items(), key=lambda x: sum(1 for prize in x[1] if prize != "SEM SORTE"), reverse=True)
+    channel = bot.get_channel(1186636197934661632)
+    mensagem = "🏆 **Ranking dos Melhores Prêmios da Caixa** 🏆\n\n"
+    
+    for i, (user_id, prizes) in enumerate(rank[:10], start=1):
+        user = await bot.fetch_user(user_id)
+        mensagem += f"{i}. **{user.name}** - {len([p for p in prizes if p != 'SEM SORTE'])} prêmios raros\n"
+    
+    await channel.send(mensagem)
+
+# Função para exibir o ranking de quem abriu mais caixas
+@tasks.loop(hours=7)
+async def rank_aberturas_caixa():
+    # Ordena os jogadores pelo número de caixas abertas
+    rank = sorted(player_box_opens.items(), key=lambda x: x[1], reverse=True)
+    channel = bot.get_channel(1186636197934661632)
+    mensagem = "📦 **Ranking de Abertura de Caixas** 📦\n\n"
+    
+    for i, (user_id, opens) in enumerate(rank[:10], start=1):
+        user = await bot.fetch_user(user_id)
+        mensagem += f"{i}. **{user.name}** - {opens} caixas abertas\n"
+    
+    await channel.send(mensagem)
+
 # Função para mudar o status do bot periodicamente
 @tasks.loop(minutes=5)
 async def mudar_status():
@@ -198,19 +226,13 @@ async def mudar_status():
     ]
     await bot.change_presence(activity=discord.Game(random.choice(status_list)))
 
-# ---- Comando para compartilhar o link do grupo do WhatsApp ----
-@bot.command(name='grupo')
-async def grupo(ctx):
-    """Compartilha o link do grupo de WhatsApp."""
-    link_grupo = "https://chat.whatsapp.com/ILn1A5UKIXwBpL7voHsDBo"
-    await ctx.send(f"📱 **Entre no nosso grupo do WhatsApp:** {link_grupo}")
-
-
 # Evento quando o bot fica online
 @bot.event
 async def on_ready():
     print(f"Bot conectado como {bot.user}")
     mudar_status.start()  # Inicia o loop de status
+    rank_melhores_presentes.start()  # Inicia o loop de ranking dos melhores presentes
+    rank_aberturas_caixa.start()  # Inicia o loop de ranking de aberturas de caixas
 
 # Rodando o bot com o token de ambiente
 TOKEN = os.getenv('TOKEN')
