@@ -178,7 +178,7 @@ async def rank_aberturas_caixa():
         mensagem_apocaliptica = random.choice(mensagens_apocalipticas).format(user=user.display_name)
         await channel.send(f"{mensagem_apocaliptica}\nParabéns {user.mention}! Você ficou em primeiro no ranking de aberturas de caixas e recebeu **100 embers**!")
 
-# Reset rankings e embers às 00:00
+# Reset rankings, embers e limpa o chat às 00:00
 @tasks.loop(minutes=1)
 async def reset_rankings():
     now = datetime.now()
@@ -186,6 +186,11 @@ async def reset_rankings():
         player_prizes.clear()
         player_box_opens.clear()
         print("Rankings resetados!")
+        
+        # Limpar o canal de chat
+        channel = bot.get_channel(1292879357446062162)
+        await channel.purge(limit=None)
+        await channel.send("🧹 O chat foi limpo para um novo começo apocalíptico!")
 
 # Função para mudar o status do bot periodicamente
 @tasks.loop(minutes=5)
@@ -206,7 +211,7 @@ async def on_ready():
     mudar_status.start()  # Inicia o loop de status
     rank_melhores_presentes.start()  # Inicia o loop de ranking dos melhores presentes
     rank_aberturas_caixa.start()  # Inicia o loop de ranking de aberturas de caixas
-    reset_rankings.start()  # Inicia o loop de reset dos rankings
+    reset_rankings.start()  # Inicia o loop de reset dos rankings e limpeza do chat
 
 # Rodando o bot com o token de ambiente
 TOKEN = os.getenv('TOKEN')
