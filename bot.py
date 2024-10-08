@@ -39,6 +39,20 @@ mensagens_com_sorte = [
     # ... (adicione as demais mensagens conforme necessário)
 ]
 
+# Mensagens apocalípticas para prêmios valiosos
+mensagens_apocalipticas = [
+    "As nuvens negras se abrem, e o poder está ao seu alcance, {user}!",
+    "Os espíritos do apocalipse sussurram seu nome... você foi escolhido, {user}!",
+    "Hoje, os mortos levantaram-se para saudar {user}. A sorte está ao seu lado!",
+    "Nas trevas do apocalipse, um brilho de esperança aparece para {user}.",
+    "Você venceu o apocalipse e emergiu como um verdadeiro guerreiro, {user}!",
+    "{user}, a devastação não é párea para sua sorte. Domine a vitória!",
+    "Os ventos da destruição carregam seu nome, {user}. Hoje, você é imbatível!",
+    "A terra treme sob seus pés, {user}, enquanto o apocalipse se curva diante de sua vitória!",
+    "{user}, você foi agraciado pelas forças do além. Este é o seu dia de sorte!",
+    "Com os olhos da noite sobre você, {user}, a fortuna finalmente lhe sorriu!"
+]
+
 # Dicionário para armazenar o último tempo de sorteio de cada jogador
 last_attempt_time = {}
 player_prizes = {}
@@ -87,6 +101,15 @@ async def abrir_caixa(ctx):
     else:
         mensagem = random.choice(mensagens_com_sorte)
         player_prizes[user.id] = player_prizes.get(user.id, []) + [prize["name"]]  # Armazena o prêmio
+
+        # Envia uma mensagem apocalíptica mencionando o apelido do jogador para prêmios valiosos
+        mensagem_apocaliptica = random.choice(mensagens_apocalipticas).format(user=user.display_name)
+        await ctx.send(mensagem_apocaliptica)
+
+        # Adiciona reações para destacar o prêmio valioso
+        reacoes = ["🔥", "<:emoji_1:1262824010723365030>", "<:emoji_2:1261377496893489242>", "<:emoji_3:1261374830088032378>", "<:emoji_4:1260945241918279751>"]
+        for reacao in reacoes:
+            await ctx.message.add_reaction(reacao)
 
     # Incrementa o contador de caixas abertas
     player_box_opens[user.id] = player_box_opens.get(user.id, 0) + 1
