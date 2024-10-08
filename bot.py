@@ -138,7 +138,7 @@ async def abrir_caixa(ctx):
 # Função para exibir o ranking dos melhores prêmios por nome dos itens
 @tasks.loop(hours=2)
 async def rank_melhores_presentes():
-    channel = bot.get_channel(1292879357446062162)
+    channel = bot.get_channel(1186636197934661632)
     rank = sorted(player_prizes.items(), key=lambda x: sum(1 for prize in x[1] if prize != "SEM SORTE"), reverse=True)
     mensagem = "🏆 **Ranking dos Melhores Prêmios da Caixa** 🏆\n\n"
     
@@ -160,7 +160,7 @@ async def rank_melhores_presentes():
 # Função para exibir o ranking de quem abriu mais caixas
 @tasks.loop(hours=2.5)
 async def rank_aberturas_caixa():
-    channel = bot.get_channel(1292879357446062162)
+    channel = bot.get_channel(1186636197934661632)
     rank = sorted(player_box_opens.items(), key=lambda x: x[1], reverse=True)
     mensagem = "📦 **Ranking de Abertura de Caixas** 📦\n\n"
     
