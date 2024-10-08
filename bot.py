@@ -111,11 +111,6 @@ async def abrir_caixa(ctx):
         mensagem_apocaliptica = random.choice(mensagens_apocalipticas).format(user=user.display_name)
         await ctx.send(mensagem_apocaliptica)
 
-        # Adiciona reações para destacar o prêmio valioso
-        reacao_aleatoria = random.choice(reacoes)
-        await ctx.message.add_reaction(reacao_aleatoria)
-        await ctx.message.add_reaction("🔥")  # Reação padrão para prêmios valiosos
-
     # Incrementa o contador de caixas abertas
     player_box_opens[user.id] = player_box_opens.get(user.id, 0) + 1
 
@@ -129,11 +124,14 @@ async def abrir_caixa(ctx):
 
     # Envia a mensagem com o embed no canal
     msg = await ctx.send(embed=embed)
-    # Reage no post do prêmio
-    await msg.add_reaction(random.choice(reacoes))
+
+    # Reage no post do prêmio valioso apenas
+    if prize["name"] != "SEM SORTE":
+        await msg.add_reaction(random.choice(reacoes))
 
     # Atualiza o tempo da última tentativa do jogador
     last_attempt_time[user.id] = time.time()
+
 
 # Função para exibir o ranking dos melhores prêmios por nome dos itens
 @tasks.loop(hours=2)
