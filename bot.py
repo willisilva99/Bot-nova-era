@@ -3,6 +3,7 @@ from discord.ext import commands, tasks
 import random
 import time
 import os
+from datetime import datetime, timedelta
 
 # Definindo intents necessários
 intents = discord.Intents.default()
@@ -39,7 +40,7 @@ mensagens_com_sorte = [
     # ... (adicione as demais mensagens conforme necessário)
 ]
 
-# Mensagens apocalípticas para prêmios valiosos
+# Mensagens apocalípticas para prêmios valiosos e rankings
 mensagens_apocalipticas = [
     "As nuvens negras se abrem, e o poder está ao seu alcance, {user}!",
     "Os espíritos do apocalipse sussurram seu nome... você foi escolhido, {user}!",
@@ -53,10 +54,14 @@ mensagens_apocalipticas = [
     "Com os olhos da noite sobre você, {user}, a fortuna finalmente lhe sorriu!"
 ]
 
-# Dicionário para armazenar o último tempo de sorteio de cada jogador
+# Dicionário para armazenar o último tempo de sorteio de cada jogador e pontuação de embers
 last_attempt_time = {}
 player_prizes = {}
 player_box_opens = {}
+player_embers = {}
+
+# Emojis de reação para adicionar
+reacoes = ["🔥", "<:emoji_1:1262824010723365030>", "<:emoji_2:1261377496893489242>", "<:emoji_3:1261374830088032378>", "<:emoji_4:1260945241918279751>"]
 
 # Função para selecionar um prêmio com base nas chances
 def escolher_premio():
@@ -107,9 +112,9 @@ async def abrir_caixa(ctx):
         await ctx.send(mensagem_apocaliptica)
 
         # Adiciona reações para destacar o prêmio valioso
-        reacoes = ["🔥", "<:emoji_1:1262824010723365030>", "<:emoji_2:1261377496893489242>", "<:emoji_3:1261374830088032378>", "<:emoji_4:1260945241918279751>"]
-        for reacao in reacoes:
-            await ctx.message.add_reaction(reacao)
+        reacao_aleatoria = random.choice(reacoes)
+        await ctx.message.add_reaction(reacao_aleatoria)
+        await ctx.message.add_reaction("🔥")  # Reação padrão para prêmios valiosos
 
     # Incrementa o contador de caixas abertas
     player_box_opens[user.id] = player_box_opens.get(user.id, 0) + 1
@@ -123,16 +128,18 @@ async def abrir_caixa(ctx):
     embed.set_image(url=prize['image'])
 
     # Envia a mensagem com o embed no canal
-    await ctx.send(embed=embed)
+    msg = await ctx.send(embed=embed)
+    # Reage no post do prêmio
+    await msg.add_reaction(random.choice(reacoes))
 
     # Atualiza o tempo da última tentativa do jogador
     last_attempt_time[user.id] = time.time()
 
 # Função para exibir o ranking dos melhores prêmios por nome dos itens
-@tasks.loop(hours=5)
+@tasks.loop(hours=2)
 async def rank_melhores_presentes():
+    channel = bot.get_channel(1292879357446062162)
     rank = sorted(player_prizes.items(), key=lambda x: sum(1 for prize in x[1] if prize != "SEM SORTE"), reverse=True)
-    channel = bot.get_channel(1186636197934661632)
     mensagem = "🏆 **Ranking dos Melhores Prêmios da Caixa** 🏆\n\n"
     
     for i, (user_id, prizes) in enumerate(rank[:10], start=1):
@@ -142,11 +149,19 @@ async def rank_melhores_presentes():
     
     await channel.send(mensagem)
 
+    # Prêmio para o primeiro lugar
+    if rank:
+        primeiro_colocado, _ = rank[0]
+        user = await bot.fetch_user(primeiro_colocado)
+        player_embers[user.id] = player_embers.get(user.id, 0) + 100
+        mensagem_apocaliptica = random.choice(mensagens_apocalipticas).format(user=user.display_name)
+        await channel.send(f"{mensagem_apocaliptica}\nParabéns {user.mention}! Você ficou em primeiro no ranking dos melhores prêmios e recebeu **100 embers**!")
+
 # Função para exibir o ranking de quem abriu mais caixas
-@tasks.loop(hours=7)
+@tasks.loop(hours=2.5)
 async def rank_aberturas_caixa():
+    channel = bot.get_channel(1292879357446062162)
     rank = sorted(player_box_opens.items(), key=lambda x: x[1], reverse=True)
-    channel = bot.get_channel(1186636197934661632)
     mensagem = "📦 **Ranking de Abertura de Caixas** 📦\n\n"
     
     for i, (user_id, opens) in enumerate(rank[:10], start=1):
@@ -154,6 +169,23 @@ async def rank_aberturas_caixa():
         mensagem += f"{i}. **{user.display_name}** - {opens} caixas abertas\n"
     
     await channel.send(mensagem)
+
+    # Prêmio para o primeiro lugar
+    if rank:
+        primeiro_colocado, _ = rank[0]
+        user = await bot.fetch_user(primeiro_colocado)
+        player_embers[user.id] = player_embers.get(user.id, 0) + 100
+        mensagem_apocaliptica = random.choice(mensagens_apocalipticas).format(user=user.display_name)
+        await channel.send(f"{mensagem_apocaliptica}\nParabéns {user.mention}! Você ficou em primeiro no ranking de aberturas de caixas e recebeu **100 embers**!")
+
+# Reset rankings e embers às 00:00
+@tasks.loop(minutes=1)
+async def reset_rankings():
+    now = datetime.now()
+    if now.hour == 0 and now.minute == 0:  # Exatamente à meia-noite
+        player_prizes.clear()
+        player_box_opens.clear()
+        print("Rankings resetados!")
 
 # Função para mudar o status do bot periodicamente
 @tasks.loop(minutes=5)
@@ -174,6 +206,7 @@ async def on_ready():
     mudar_status.start()  # Inicia o loop de status
     rank_melhores_presentes.start()  # Inicia o loop de ranking dos melhores presentes
     rank_aberturas_caixa.start()  # Inicia o loop de ranking de aberturas de caixas
+    reset_rankings.start()  # Inicia o loop de reset dos rankings
 
 # Rodando o bot com o token de ambiente
 TOKEN = os.getenv('TOKEN')
