@@ -181,12 +181,31 @@ async def rank_aberturas_caixa():
 async def reset_rankings():
     now = datetime.now()
     if now.hour == 0 and now.minute == 0:  # Exatamente à meia-noite
+        channel = bot.get_channel(1292879357446062162)
+        
+        # Premiar o primeiro lugar no ranking de prêmios
+        rank_melhores = sorted(player_prizes.items(), key=lambda x: sum(1 for prize in x[1] if prize != "SEM SORTE"), reverse=True)
+        if rank_melhores:
+            melhor_jogador, _ = rank_melhores[0]
+            player_embers[melhor_jogador] = player_embers.get(melhor_jogador, 0) + 100
+            user = await bot.fetch_user(melhor_jogador)
+            mensagem_apocaliptica = random.choice(mensagens_apocalipticas).format(user=user.display_name)
+            await channel.send(f"{mensagem_apocaliptica}\nParabéns {user.mention}! Você recebeu **100 embers** por ser o melhor do ranking de prêmios!")
+
+        # Premiar o primeiro lugar no ranking de aberturas de caixas
+        rank_aberturas = sorted(player_box_opens.items(), key=lambda x: x[1], reverse=True)
+        if rank_aberturas:
+            melhor_abertura, _ = rank_aberturas[0]
+            player_embers[melhor_abertura] = player_embers.get(melhor_abertura, 0) + 100
+            user = await bot.fetch_user(melhor_abertura)
+            mensagem_apocaliptica = random.choice(mensagens_apocalipticas).format(user=user.display_name)
+            await channel.send(f"{mensagem_apocaliptica}\nParabéns {user.mention}! Você recebeu **100 embers** por ser o melhor do ranking de aberturas de caixas!")
+
+        # Resetar dados e limpar o canal
         player_prizes.clear()
         player_box_opens.clear()
         print("Rankings resetados!")
         
-        # Limpar o canal de chat
-        channel = bot.get_channel(1292879357446062162)
         await channel.purge(limit=None)
         await channel.send("🧹 O chat foi limpo para um novo começo apocalíptico!")
 
