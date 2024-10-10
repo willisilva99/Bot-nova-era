@@ -160,13 +160,7 @@ async def rank_aberturas_caixa():
     
     await channel.send(mensagem)
 
-    # Prêmio para o primeiro lugar
-    if rank:
-        primeiro_colocado, _ = rank[0]
-        user = await bot.fetch_user(primeiro_colocado)
-        player_embers[user.id] = player_embers.get(user.id, 0) + 100
-        mensagem_apocaliptica = random.choice(mensagens_apocalipticas).format(user=user.display_name)
-        await channel.send(f"{mensagem_apocaliptica}\nParabéns {user.mention}! Você ficou em primeiro no ranking de aberturas de caixas e recebeu **100 embers**!")
+    
 
 # Reset rankings, embers e limpa o chat às 00:00
 @tasks.loop(minutes=1)
