@@ -16,12 +16,12 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Lista de prêmios com as imagens e suas respectivas probabilidades
 prizes = [
-    {"name": "AK47", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144266105618573/ak47.png", "chance": 2},
-    {"name": "VIP", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144289367228446/vip.png", "chance": 3},
-    {"name": "GIROCOPITERO", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144105841393694/drop-aberto.png", "chance": 2},
-    {"name": "MOTO", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144223407607869/moto.png", "chance": 2},
-    {"name": "3.000 EMBERS", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144200271695962/ember.png", "chance": 8},
-    {"name": "SEM SORTE", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144175944863784/fail.png", "chance": 82}
+    {"name": "AK47", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144266105618573/ak47.png", "chance": 1},
+    {"name": "VIP", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144289367228446/vip.png", "chance": 1},
+    {"name": "GIROCOPITERO", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144105841393694/drop-aberto.png", "chance": 1},
+    {"name": "MOTO", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144223407607869/moto.png", "chance": 1},
+    {"name": "3.000 EMBERS", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144200271695962/ember.png", "chance": 2},
+    {"name": "SEM SORTE", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144175944863784/fail.png", "chance": 90}
 ]
 
 # Mensagens de azar
@@ -134,7 +134,7 @@ async def abrir_caixa(ctx):
 
 
 # Função para exibir o ranking dos melhores prêmios por nome dos itens
-@tasks.loop(hours=2)
+@tasks.loop(hours=5)
 async def rank_melhores_presentes():
     channel = bot.get_channel(1186636197934661632)
     rank = sorted(player_prizes.items(), key=lambda x: sum(1 for prize in x[1] if prize != "SEM SORTE"), reverse=True)
@@ -148,7 +148,7 @@ async def rank_melhores_presentes():
     await channel.send(mensagem)
 
 # Função para exibir o ranking de quem abriu mais caixas
-@tasks.loop(hours=2.5)
+@tasks.loop(hours=5.5)
 async def rank_aberturas_caixa():
     channel = bot.get_channel(1186636197934661632)
     rank = sorted(player_box_opens.items(), key=lambda x: x[1], reverse=True)
