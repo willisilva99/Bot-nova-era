@@ -138,7 +138,7 @@ async def abrir_caixa(ctx):
 async def rank_melhores_presentes():
     channel = bot.get_channel(1304040902498713631)
     rank = sorted(player_prizes.items(), key=lambda x: sum(1 for prize in x[1] if prize != "SEM SORTE"), reverse=True)
-    mensagem = "🏆 **Ranking dos Melhores Prêmios da Caixa** 🏆\n\n"
+    mensagem = "🏆 **Ranking dos Melhores Prêmios da Caixa!** 🏆\n\n"
     
     for i, (user_id, prizes) in enumerate(rank[:10], start=1):
         user = await bot.fetch_user(user_id)
