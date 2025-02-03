@@ -105,7 +105,7 @@ async def abrir_caixa(ctx):
         mensagem = random.choice(mensagens_sem_sorte)
     else:
         mensagem = random.choice(mensagens_com_sorte)
-        player_prizes[user.id] = player_prizes.get(user.id, []) + [prize["name"]]  # Armazena o prêmio
+        player_prizes[user.id] = player_prizes.get(user.id, []) + [prize["name"]]
 
         # Envia uma mensagem apocalíptica mencionando o apelido do jogador para prêmios valiosos
         mensagem_apocaliptica = random.choice(mensagens_apocalipticas).format(user=user.display_name)
@@ -131,7 +131,6 @@ async def abrir_caixa(ctx):
 
     # Atualiza o tempo da última tentativa do jogador
     last_attempt_time[user.id] = time.time()
-
 
 # Função para exibir o ranking dos melhores prêmios por nome dos itens
 @tasks.loop(hours=6)
@@ -159,8 +158,6 @@ async def rank_aberturas_caixa():
         mensagem += f"{i}. **{user.display_name}** - {opens} caixas abertas\n"
     
     await channel.send(mensagem)
-
-    
 
 # Reset rankings, embers e limpa o chat às 00:00
 @tasks.loop(minutes=1)
@@ -216,6 +213,8 @@ async def on_ready():
     rank_aberturas_caixa.start()  # Inicia o loop de ranking de aberturas de caixas
     reset_rankings.start()  # Inicia o loop de reset dos rankings e limpeza do chat
 
-# Rodando o bot com o token de ambiente
+# Obtendo o token da variável de ambiente e iniciando o bot
 TOKEN = os.getenv('TOKEN')
+if not TOKEN:
+    raise ValueError("TOKEN não definido. Certifique-se de que a variável de ambiente 'TOKEN' está configurada corretamente.")
 bot.run(TOKEN)
