@@ -55,16 +55,20 @@ mensagens_apocalipticas = [
     "Com os olhos da noite sobre você, {user}, a fortuna finalmente lhe sorriu!"
 ]
 
-# Dicionários para armazenar dados dos jogadores
-last_attempt_time = {}  # Para controlar o tempo entre aberturas de caixa (3h de cooldown)
+# Dicionários para armazenar dados dos jogadores (para o comando abrir_caixa)
+last_attempt_time = {}  # Para controlar o cooldown de 3 horas na abertura de caixa
 player_prizes = {}      # Para armazenar os prêmios ganhos (exceto "SEM SORTE")
 player_box_opens = {}   # Para contar quantas caixas foram abertas
-player_embers = {}      # Para armazenar a quantidade de embers ganhos (inclusive por rolardado)
+player_embers = {}      # Para armazenar a quantidade total de embers ganhos (por ambos os jogos)
 
-# Emojis de reação para adicionar na mensagem de prêmios
+# Dicionários para armazenar dados do jogo dos dados
+player_dado_wins = {}    # Quantas vezes o jogador ganhou (quando os dados premiam)
+player_dado_embers = {}  # Quantidade de embers ganhos somente com o jogo dos dados
+
+# Emojis de reação para adicionar na mensagem de prêmios da caixa
 reacoes = ["🔥", "<:emoji_1:1262824010723365030>", "<:emoji_2:1261377496893489242>", "<:emoji_3:1261374830088032378>", "<:emoji_4:1260945241918279751>"]
 
-# Função para selecionar um prêmio com base nas chances
+# Função para selecionar um prêmio com base nas chances (para o abrir_caixa)
 def escolher_premio():
     total = sum(item['chance'] for item in prizes)
     rand = random.uniform(0, total)
@@ -78,7 +82,9 @@ def escolher_premio():
 def tempo_restante(last_time):
     return max(0, 10800 - (time.time() - last_time))  # 3 horas = 10800 segundos
 
-# Comando para abrir a caixa
+# ---------------------------
+# COMANDO: abrir_caixa
+# ---------------------------
 @bot.command()
 async def abrir_caixa(ctx):
     canal_permitido = 1292879357446062162
@@ -101,7 +107,7 @@ async def abrir_caixa(ctx):
     # Sorteia um prêmio com base nas chances
     prize = escolher_premio()
 
-    # Escolhe a mensagem de resposta com base no prêmio
+    # Seleciona a mensagem de resposta conforme o prêmio
     if prize["name"] == "SEM SORTE":
         mensagem = random.choice(mensagens_sem_sorte)
     else:
@@ -123,7 +129,7 @@ async def abrir_caixa(ctx):
     )
     embed.set_image(url=prize['image'])
 
-    # Envia o embed e adiciona reação se houver prêmio
+    # Envia o embed e adiciona uma reação se houver prêmio
     msg = await ctx.send(embed=embed)
     if prize["name"] != "SEM SORTE":
         await msg.add_reaction(random.choice(reacoes))
@@ -131,14 +137,16 @@ async def abrir_caixa(ctx):
     # Atualiza o tempo da última tentativa
     last_attempt_time[user.id] = time.time()
 
-# Comando para rolar o dado com GIF de animação
+# ---------------------------
+# COMANDO: rolardado
+# ---------------------------
 @bot.command()
 async def rolardado(ctx):
-    """Jogo de dado com animação: se cair 5 ou 6, o jogador ganha embers."""
+    """Jogo de dado com animação: se cair 5 ou 6, o jogador pode ganhar embers (chance baixa)."""
     user = ctx.author
 
-    # Envia um embed com um GIF simulando o dado rolando
-    gif_url = "https://imgur.com/PEpiSuw.gif"  # Exemplo de GIF (altere se desejar)
+    # Envia embed com um GIF simulando o dado rolando
+    gif_url = "https://imgur.com/PEpiSuw.gif"  # Altere o URL do GIF se desejar
     embed_rolando = discord.Embed(
         title="🎲 Rolando o Dado...",
         description="Aguarde enquanto o dado está sendo rolado.",
@@ -154,20 +162,29 @@ async def rolardado(ctx):
     resultado = random.randint(1, 6)
     mensagem_resultado = f"{user.mention} rolou o dado e saiu **{resultado}**!\n"
     
-    # Verifica se o jogador ganhou embers
+    embers_ganhos = 0
+    # Apenas se o resultado for 5 ou 6, uma verificação extra define se o jogador ganha ou não (chance baixa)
     if resultado == 5:
-        embers_ganhos = 5000
-        mensagem_resultado += f"Parabéns! Você ganhou **{embers_ganhos} embers**!"
+        # Chance de 20% de ganhar
+        if random.random() < 0.20:
+            embers_ganhos = 5000
+            mensagem_resultado += f"Parabéns! Você ganhou **{embers_ganhos} embers**!"
+        else:
+            mensagem_resultado += "Que pena, a sorte não colaborou desta vez."
     elif resultado == 6:
-        embers_ganhos = 6000
-        mensagem_resultado += f"Parabéns! Você ganhou **{embers_ganhos} embers**!"
+        if random.random() < 0.20:
+            embers_ganhos = 6000
+            mensagem_resultado += f"Parabéns! Você ganhou **{embers_ganhos} embers**!"
+        else:
+            mensagem_resultado += "Que pena, a sorte não colaborou desta vez."
     else:
-        embers_ganhos = 0
         mensagem_resultado += "Que pena, dessa vez a sorte não esteve ao seu lado."
 
-    # Atualiza o saldo de embers do jogador, se aplicável
+    # Atualiza o saldo de embers do jogador, se aplicável (acrescenta tanto no geral quanto no ranking dos dados)
     if embers_ganhos > 0:
         player_embers[user.id] = player_embers.get(user.id, 0) + embers_ganhos
+        player_dado_wins[user.id] = player_dado_wins.get(user.id, 0) + 1
+        player_dado_embers[user.id] = player_dado_embers.get(user.id, 0) + embers_ganhos
 
     # Apaga a mensagem com o GIF
     await mensagem_gif.delete()
@@ -180,7 +197,9 @@ async def rolardado(ctx):
     )
     await ctx.send(embed=embed_resultado)
 
-# Loop para exibir o ranking dos melhores prêmios (a cada 6 horas)
+# ---------------------------
+# LOOP: Ranking dos melhores prêmios da Caixa (a cada 6 horas)
+# ---------------------------
 @tasks.loop(hours=6)
 async def rank_melhores_presentes():
     channel = bot.get_channel(1304040902498713631)
@@ -194,7 +213,9 @@ async def rank_melhores_presentes():
     
     await channel.send(mensagem)
 
-# Loop para exibir o ranking de quem abriu mais caixas (a cada 6.5 horas)
+# ---------------------------
+# LOOP: Ranking de Aberturas de Caixas (a cada 6.5 horas)
+# ---------------------------
 @tasks.loop(hours=6.5)
 async def rank_aberturas_caixa():
     channel = bot.get_channel(1304040902498713631)
@@ -207,14 +228,31 @@ async def rank_aberturas_caixa():
     
     await channel.send(mensagem)
 
-# Loop para resetar rankings, premiações e limpar o chat às 00:00 (verificado a cada minuto)
+# ---------------------------
+# LOOP: Ranking dos Prêmios dos Dados (a cada 7 horas)
+# ---------------------------
+@tasks.loop(hours=7)
+async def rank_dados():
+    channel = bot.get_channel(1304040902498713631)
+    # Ordena pelo total de embers ganhos apenas com os dados
+    rank = sorted(player_dado_embers.items(), key=lambda x: x[1], reverse=True)
+    mensagem = "🎲 **Ranking de Prêmios dos Dados** 🎲\n\n"
+    for i, (user_id, embers_total) in enumerate(rank[:10], start=1):
+        user = await bot.fetch_user(user_id)
+        wins = player_dado_wins.get(user_id, 0)
+        mensagem += f"{i}. **{user.display_name}** - {wins} vitórias (Total: {embers_total} embers)\n"
+    await channel.send(mensagem)
+
+# ---------------------------
+# LOOP: Resetar Rankings, Premiações e Limpar o Chat às 00:00 (verificado a cada minuto)
+# ---------------------------
 @tasks.loop(minutes=1)
 async def reset_rankings():
     now = datetime.now()
     if now.hour == 0 and now.minute == 0:  # Exatamente à meia-noite
         channel = bot.get_channel(1292879357446062162)
         
-        # Premiar o primeiro lugar no ranking de prêmios
+        # Premiar o primeiro lugar no ranking de prêmios da caixa
         rank_melhores = sorted(player_prizes.items(), key=lambda x: sum(1 for prize in x[1] if prize != "SEM SORTE"), reverse=True)
         if rank_melhores:
             melhor_jogador, _ = rank_melhores[0]
@@ -232,15 +270,17 @@ async def reset_rankings():
             mensagem_apocaliptica = random.choice(mensagens_apocalipticas).format(user=user.display_name)
             await channel.send(f"{mensagem_apocaliptica}\nParabéns {user.mention}! Você recebeu **100 embers** por ser o melhor do ranking de aberturas de caixas!")
 
-        # Resetar dados e limpar o canal
+        # Resetar dados da caixa e limpar o canal
         player_prizes.clear()
         player_box_opens.clear()
-        print("Rankings resetados!")
+        print("Rankings da Caixa resetados!")
         
         await channel.purge(limit=None)
         await channel.send("🧹 O chat foi limpo para um novo começo apocalíptico!")
 
-# Loop para mudar o status do bot periodicamente (a cada 5 minutos)
+# ---------------------------
+# LOOP: Mudar o Status do Bot Periodicamente (a cada 5 minutos)
+# ---------------------------
 @tasks.loop(minutes=5)
 async def mudar_status():
     status_list = [
@@ -257,8 +297,9 @@ async def mudar_status():
 async def on_ready():
     print(f"Bot conectado como {bot.user}")
     mudar_status.start()            # Inicia o loop de status
-    rank_melhores_presentes.start() # Inicia o loop de ranking dos melhores presentes
+    rank_melhores_presentes.start() # Inicia o loop de ranking dos melhores prêmios da caixa
     rank_aberturas_caixa.start()    # Inicia o loop de ranking de aberturas de caixas
+    rank_dados.start()              # Inicia o loop de ranking dos prêmios dos dados
     reset_rankings.start()          # Inicia o loop de reset dos rankings e limpeza do chat
 
 # Obtendo o token da variável de ambiente e iniciando o bot
