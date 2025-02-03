@@ -36,14 +36,11 @@ mensagens_sem_sorte = [
     "As hordas estão crescendo e a sorte está se esvaindo... tente novamente mais tarde!",
     "Você caminhou em vão, o apocalipse não perdoa... talvez a próxima vez seja melhor."
 ]
-
 mensagens_com_sorte = [
     "O apocalipse pode ser sombrio, mas hoje você brilhou!",
     "Sua sorte virou as costas para os zumbis, parabéns pelo prêmio!",
     "O destino sorriu para você hoje... aproveite seu prêmio!"
 ]
-
-# Mensagens apocalípticas para prêmios valiosos e rankings
 mensagens_apocalipticas = [
     "As nuvens negras se abrem, e o poder está ao seu alcance, {user}!",
     "Os espíritos do apocalipse sussurram seu nome... você foi escolhido, {user}!",
@@ -57,21 +54,27 @@ mensagens_apocalipticas = [
     "Com os olhos da noite sobre você, {user}, a fortuna finalmente lhe sorriu!"
 ]
 
-# Estruturas para o jogo da Caixa
-last_attempt_time = {}  # Cooldown de 3 horas para abrir a caixa
+# Dados para o jogo da Caixa
+last_attempt_time = {}  # Cooldown de 3 horas (10800 seg) para abrir a caixa
 player_prizes = {}      # Prêmios ganhos (exceto "SEM SORTE")
 player_box_opens = {}   # Número de caixas abertas
-player_embers = {}      # Total de embers ganhos (dos dois jogos)
+# Saldo geral de embers (dos 3 jogos)
+player_embers = {}
 
-# Estruturas para o jogo dos Dados
-last_dado_time = {}     # Cooldown de 2 horas para rolar o dado
-player_dado_wins = {}   # Número de vitórias no dado
+# Dados para o jogo dos Dados
+last_dado_time = {}     # Cooldown de 2 horas (7200 seg) para rolar o dado
+player_dado_wins = {}   # Número de vitórias (quando rola 5 ou 6)
 player_dado_embers = {} # Embers ganhos somente com o dado
 
-# ID do Admin para notificação
+# Dados para o jogo da Roleta Russa
+last_roleta_time = {}    # Cooldown (2 horas, 7200 seg) para usar !roleta
+player_roleta_wins = {}  # Número de vitórias (sobreviveu e ganhou prêmio)
+player_roleta_tokens = {}# Tokens VIP ganhos via roleta
+
+# ID do Admin para notificação (altere se necessário)
 ADMIN_ID = 470628393272999948
 
-# Emojis para reação nas mensagens de prêmios (abrir_caixa)
+# Emojis para reações (usados no abrir_caixa)
 reacoes = [
     "🔥", 
     "<:emoji_1:1262824010723365030>", 
@@ -102,22 +105,21 @@ def tempo_restante(last_time, cooldown):
 async def abrir_caixa(ctx):
     canal_permitido = 1292879357446062162  # ID do canal permitido
     if ctx.channel.id != canal_permitido:
-        await ctx.send(f"{ctx.author.mention}, você só pode usar o comando neste canal: <#{canal_permitido}>")
+        await ctx.send(f"{ctx.author.mention}, você só pode usar este comando neste canal: <#{canal_permitido}>")
         return
 
     user = ctx.author
 
-    # Cooldown de 3 horas = 10800 segundos
+    # Cooldown de 3 horas (10800 seg)
     if user.id in last_attempt_time:
         restante = tempo_restante(last_attempt_time[user.id], 10800)
         if restante > 0:
             horas = int(restante // 3600)
             minutos = int((restante % 3600) // 60)
             segundos = int(restante % 60)
-            await ctx.send(f"{user.mention}, você precisa esperar {horas}h {minutos}m {segundos}s para tentar novamente.")
+            await ctx.send(f"{user.mention}, aguarde {horas}h {minutos}m {segundos}s para abrir outra caixa.")
             return
 
-    # Sorteia um prêmio com base nas chances
     prize = escolher_premio()
 
     if prize["name"] == "SEM SORTE":
@@ -149,27 +151,25 @@ async def abrir_caixa(ctx):
 # ---------------------------
 @bot.command()
 async def rolardado(ctx):
-    """Jogo de dado com animação: se cair 5 ou 6, o jogador ganha embers.
+    """Jogo de dado: se o resultado for 5 ou 6, ganha embers.
        Cooldown: 2 horas."""
     user = ctx.author
 
-    # Cooldown de 2 horas = 7200 segundos
     if user.id in last_dado_time:
         restante = tempo_restante(last_dado_time[user.id], 7200)
         if restante > 0:
             horas = int(restante // 3600)
             minutos = int((restante % 3600) // 60)
             segundos = int(restante % 60)
-            await ctx.send(f"{user.mention}, você precisa esperar {horas}h {minutos}m {segundos}s para rolar o dado novamente.")
+            await ctx.send(f"{user.mention}, aguarde {horas}h {minutos}m {segundos}s para rolar o dado novamente.")
             return
 
     last_dado_time[user.id] = time.time()
 
-    # Envia embed com GIF simulando a rolagem do dado
-    gif_url = "https://imgur.com/PEpiSuw.gif"  # Altere se desejar
+    gif_url = "https://imgur.com/PEpiSuw.gif"  # GIF de rolagem do dado (altere se desejar)
     embed_rolando = discord.Embed(
         title="🎲 Rolando o Dado...",
-        description="Aguarde enquanto o dado está sendo rolado.",
+        description="Aguarde enquanto o dado é lançado.",
         color=discord.Color.blue()
     )
     embed_rolando.set_image(url=gif_url)
@@ -181,21 +181,19 @@ async def rolardado(ctx):
     mensagem_resultado = f"{user.mention} rolou o dado e saiu **{resultado}**!\n"
 
     embers_ganhos = 0
-    # O dado só premia se o resultado for 5 ou 6
     if resultado == 5:
         embers_ganhos = 5000
-        mensagem_resultado += f"Parabéns! Você ganhou **5000 embers**!"
+        mensagem_resultado += "Parabéns! Você ganhou **5000 embers**!"
     elif resultado == 6:
         embers_ganhos = 6000
-        mensagem_resultado += f"Parabéns! Você ganhou **6000 embers**!"
+        mensagem_resultado += "Parabéns! Você ganhou **6000 embers**!"
     else:
-        mensagem_resultado += "Que pena, dessa vez a sorte não esteve ao seu lado."
+        mensagem_resultado += "Que pena, dessa vez a sorte não colaborou."
 
     if embers_ganhos > 0:
         player_embers[user.id] = player_embers.get(user.id, 0) + embers_ganhos
         player_dado_wins[user.id] = player_dado_wins.get(user.id, 0) + 1
         player_dado_embers[user.id] = player_dado_embers.get(user.id, 0) + embers_ganhos
-        # Notifica o admin para liberar o prêmio
         await ctx.send(f"<@{ADMIN_ID}>, por favor, libere o prêmio para {user.mention}!")
 
     await mensagem_gif.delete()
@@ -206,6 +204,80 @@ async def rolardado(ctx):
         color=discord.Color.blue()
     )
     await ctx.send(embed=embed_resultado)
+
+# ---------------------------
+# COMANDO: roleta (Roleta Russa)
+# ---------------------------
+@bot.command()
+async def roleta(ctx):
+    """Jogo de roleta russa:
+    - O usuário aciona a roleta com animação.
+    - Chance baixa de levar "tiro" (resultado ruim).
+    - Se não levar tiro, ganha **2 Token VIP**.
+    - Notifica o admin em caso de prêmio.
+    Cooldown: 2 horas."""
+    user = ctx.author
+
+    # Cooldown de 2 horas para o jogo da roleta
+    if user.id in last_roleta_time:
+        restante = tempo_restante(last_roleta_time[user.id], 7200)
+        if restante > 0:
+            horas = int(restante // 3600)
+            minutos = int((restante % 3600) // 60)
+            segundos = int(restante % 60)
+            await ctx.send(f"{user.mention}, aguarde {horas}h {minutos}m {segundos}s para jogar a roleta novamente.")
+            return
+
+    last_roleta_time[user.id] = time.time()
+
+    # Envia embed com GIF de roleta girando
+    gif_roleta = "https://imgur.com/5TEQXni.gif"  # Exemplo de GIF para roleta (altere se desejar)
+    embed_rodando = discord.Embed(
+        title="🔫 Jogando a Roleta Russa...",
+        description="A roleta está girando. Aguarde o resultado.",
+        color=discord.Color.purple()
+    )
+    embed_rodando.set_image(url=gif_roleta)
+    msg_roleta = await ctx.send(embed=embed_rodando)
+
+    await asyncio.sleep(3)
+
+    # Define a chance: 10% de levar tiro; 90% de ganhar 2 Token VIP.
+    if random.random() < 0.10:
+        # Resultado: levou tiro
+        resultado = "tiro"
+        mensagem_resultado = f"{user.mention}, a roleta parou! Infelizmente, você foi atingido!"
+        # GIF para tiro (exemplo)
+        gif_tiro = "https://imgur.com/IGfEwcg.gif"
+        embed_final = discord.Embed(
+            title="🔫 Resultado da Roleta Russa",
+            description=mensagem_resultado,
+            color=discord.Color.red()
+        )
+        embed_final.set_image(url=gif_tiro)
+        # Não há prêmio; o usuário "levou tiro"
+    else:
+        # Resultado: não levou tiro, ganha 2 Token VIP
+        resultado = "sobreviveu"
+        premio = "2 Token VIP"
+        mensagem_resultado = f"{user.mention}, parabéns! Você sobreviveu e ganhou **{premio}**!"
+        embed_final = discord.Embed(
+            title="🔫 Resultado da Roleta Russa",
+            description=mensagem_resultado,
+            color=discord.Color.green()
+        )
+        # Notifica o admin para liberar o prêmio
+        await ctx.send(f"<@{ADMIN_ID}>, por favor, libere o prêmio para {user.mention}!")
+        # Atualiza os dados do jogo da roleta
+        player_roleta_wins[user.id] = player_roleta_wins.get(user.id, 0) + 1
+        player_roleta_tokens[user.id] = player_roleta_tokens.get(user.id, 0) + 2
+        # Atualiza também o saldo geral de embers (se os tokens VIP forem contabilizados como embers)
+        player_embers[user.id] = player_embers.get(user.id, 0) + 2
+
+    await msg_roleta.delete()
+
+    embed_final.set_footer(text="Jogo de Roleta Russa")
+    await ctx.send(embed=embed_final)
 
 # ---------------------------
 # LOOP: Ranking dos Melhores Prêmios da Caixa (a cada 6 horas)
@@ -249,6 +321,20 @@ async def rank_dados():
     await channel.send(mensagem)
 
 # ---------------------------
+# LOOP: Ranking da Roleta Russa (a cada 8 horas)
+# ---------------------------
+@tasks.loop(hours=8)
+async def rank_roleta():
+    channel = bot.get_channel(1304040902498713631)
+    rank = sorted(player_roleta_tokens.items(), key=lambda x: x[1], reverse=True)
+    mensagem = "🔫 **Ranking da Roleta Russa** 🔫\n\n"
+    for i, (user_id, tokens) in enumerate(rank[:10], start=1):
+        user = await bot.fetch_user(user_id)
+        wins = player_roleta_wins.get(user_id, 0)
+        mensagem += f"{i}. **{user.display_name}** - {wins} vitórias (Total: {tokens} Token VIP)\n"
+    await channel.send(mensagem)
+
+# ---------------------------
 # LOOP: Resetar Rankings, Premiações e Limpar o Chat às 00:00 (verificado a cada minuto)
 # ---------------------------
 @tasks.loop(minutes=1)
@@ -256,6 +342,7 @@ async def reset_rankings():
     now = datetime.now()
     if now.hour == 0 and now.minute == 0:
         channel = bot.get_channel(1292879357446062162)
+        
         rank_melhores = sorted(player_prizes.items(), key=lambda x: sum(1 for prize in x[1] if prize != "SEM SORTE"), reverse=True)
         if rank_melhores:
             melhor_jogador, _ = rank_melhores[0]
@@ -303,6 +390,7 @@ async def on_ready():
     rank_melhores_presentes.start()
     rank_aberturas_caixa.start()
     rank_dados.start()
+    rank_roleta.start()
     reset_rankings.start()
 
 # ---------------------------
