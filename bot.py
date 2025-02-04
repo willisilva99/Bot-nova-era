@@ -4,7 +4,7 @@ import random
 import time
 import os
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # ---------------------------
 # Configuração dos Intents e Criação do Bot
@@ -30,57 +30,53 @@ prizes = [
     {"name": "SEM SORTE", "image": "https://media.discordapp.net/attachments/1291144028590706799/1291144175944863784/fail.png", "chance": 91}
 ]
 
-# Mensagens para o comando abrir_caixa
+# Mensagens padrão
 mensagens_sem_sorte = [
-    "Os céus escureceram e os ventos trazem más notícias... hoje não é seu dia de sorte!",
-    "As hordas estão crescendo e a sorte está se esvaindo... tente novamente mais tarde!",
-    "Você caminhou em vão, o apocalipse não perdoa... talvez a próxima vez seja melhor."
+    "Os céus escureceram e os ventos anunciam uma maré de azar hoje...",
+    "A sorte se escondeu entre as sombras. Tente novamente mais tarde!",
+    "Parece que o apocalipse não favorece todos os guerreiros hoje."
 ]
 mensagens_com_sorte = [
-    "O apocalipse pode ser sombrio, mas hoje você brilhou!",
-    "Sua sorte virou as costas para os zumbis, parabéns pelo prêmio!",
-    "O destino sorriu para você hoje... aproveite seu prêmio!"
+    "Hoje, as estrelas conspiram a seu favor!",
+    "Você demonstrou coragem e a sorte respondeu positivamente!",
+    "Os deuses do apocalipse sorriem para você!"
 ]
 mensagens_apocalipticas = [
-    "As nuvens negras se abrem, e o poder está ao seu alcance, {user}!",
-    "Os espíritos do apocalipse sussurram seu nome... você foi escolhido, {user}!",
-    "Hoje, os mortos levantaram-se para saudar {user}. A sorte está ao seu lado!",
-    "Nas trevas do apocalipse, um brilho de esperança aparece para {user}.",
-    "Você venceu o apocalipse e emergiu como um verdadeiro guerreiro, {user}!",
-    "{user}, a devastação não é párea para sua sorte. Domine a vitória!",
-    "Os ventos da destruição carregam seu nome, {user}. Hoje, você é imbatível!",
-    "A terra treme sob seus pés, {user}, enquanto o apocalipse se curva diante de sua vitória!",
-    "{user}, você foi agraciado pelas forças do além. Este é o seu dia de sorte!",
-    "Com os olhos da noite sobre você, {user}, a fortuna finalmente lhe sorriu!"
+    "As nuvens negras se abrem para {user}!",
+    "O destino sussurra: {user}, sua hora chegou!",
+    "Em meio ao caos, {user} se destaca com brilho único!",
+    "{user}, o universo reconhece sua bravura!"
 ]
 
-# Dados para o jogo da Caixa
-last_attempt_time = {}  # Cooldown de 3 horas (10800 seg) para abrir a caixa
-player_prizes = {}      # Prêmios ganhos (exceto "SEM SORTE")
-player_box_opens = {}   # Número de caixas abertas
-# Saldo geral de embers (dos 3 jogos)
-player_embers = {}
+# Dados dos jogos e contadores diários
+last_attempt_time = {}    # Cooldown de 3 horas para abrir a caixa
+player_prizes = {}        # Prêmios ganhos (exceto "SEM SORTE")
+player_box_opens = {}     # Número de caixas abertas
+player_embers = {}        # Saldo geral de embers (dos 3 jogos)
 
-# Dados para o jogo dos Dados
-last_dado_time = {}     # Cooldown de 2 horas (7200 seg) para rolar o dado
-player_dado_wins = {}   # Número de vitórias (quando rola 5 ou 6)
-player_dado_embers = {} # Embers ganhos somente com o dado
+last_dado_time = {}       # Cooldown de 2 horas para rolar o dado
+player_dado_wins = {}     # Vitórias no dado (quando rola 5 ou 6)
+player_dado_embers = {}   # Embers ganhos com o dado
 
-# Dados para o jogo da Roleta Russa
-last_roleta_time = {}    # Cooldown (2 horas, 7200 seg) para usar !roleta
-player_roleta_wins = {}  # Número de vitórias (sobreviveu e ganhou prêmio)
-player_roleta_tokens = {}# Tokens VIP ganhos via roleta
+last_roleta_time = {}     # Cooldown de 2 horas para usar !roleta
+player_roleta_wins = {}   # Vitórias na roleta (sobreviveu e ganhou prêmio)
+player_roleta_tokens = {} # Tokens VIP ganhos na roleta
 
-# ID do Admin para notificação (altere se necessário)
+# Limites diários
+daily_box_wins = {}       # Máximo de 2 prêmios na caixa por dia
+daily_dado_wins = {}      # Máximo de 3 vitórias no dado por dia
+daily_roleta_wins = {}    # Máximo de 3 vitórias na roleta por dia
+
+# ID do Admin para notificação (altere conforme necessário)
 ADMIN_ID = 470628393272999948
 
-# Emojis para reações (usados no abrir_caixa)
+# Emojis para reações (sinta-se à vontade para personalizar)
 reacoes = [
     "🔥", 
-    "<:emoji_1:1262824010723365030>", 
-    "<:emoji_2:1261377496893489242>", 
-    "<:emoji_3:1261374830088032378>", 
-    "<:emoji_4:1260945241918279751>"
+    "⭐", 
+    "🎉", 
+    "💎", 
+    "👍"
 ]
 
 # ---------------------------
@@ -98,6 +94,12 @@ def escolher_premio():
 def tempo_restante(last_time, cooldown):
     return max(0, cooldown - (time.time() - last_time))
 
+def formatar_tempo(segundos):
+    h = int(segundos // 3600)
+    m = int((segundos % 3600) // 60)
+    s = int(segundos % 60)
+    return f"{h}h {m}m {s}s"
+
 # ---------------------------
 # COMANDO: abrir_caixa
 # ---------------------------
@@ -105,104 +107,120 @@ def tempo_restante(last_time, cooldown):
 async def abrir_caixa(ctx):
     canal_permitido = 1292879357446062162  # ID do canal permitido
     if ctx.channel.id != canal_permitido:
-        await ctx.send(f"{ctx.author.mention}, você só pode usar este comando neste canal: <#{canal_permitido}>")
+        await ctx.send(embed=discord.Embed(
+            title="Canal Incorreto",
+            description=f"{ctx.author.mention}, utilize o comando no canal adequado: <#{canal_permitido}>",
+            color=discord.Color.orange()
+        ))
         return
 
     user = ctx.author
 
-    # Cooldown de 3 horas (10800 seg)
+    # Verifica o cooldown (3 horas)
     if user.id in last_attempt_time:
         restante = tempo_restante(last_attempt_time[user.id], 10800)
         if restante > 0:
-            horas = int(restante // 3600)
-            minutos = int((restante % 3600) // 60)
-            segundos = int(restante % 60)
-            await ctx.send(f"{user.mention}, aguarde {horas}h {minutos}m {segundos}s para abrir outra caixa.")
-            return
+            embed_cd = discord.Embed(
+                title="Caixa em Recarga",
+                description=f"{user.mention}, aguarde {formatar_tempo(restante)} para abrir outra caixa.",
+                color=discord.Color.dark_orange()
+            )
+            return await ctx.send(embed=embed_cd)
 
     prize = escolher_premio()
+
+    # Se prêmio não for "SEM SORTE", verificar limite diário (máximo 2 prêmios)
+    if prize["name"] != "SEM SORTE" and daily_box_wins.get(user.id, 0) >= 2:
+        prize = {"name": "SEM SORTE", "image": prizes[-1]["image"], "chance": 91}
 
     if prize["name"] == "SEM SORTE":
         mensagem = random.choice(mensagens_sem_sorte)
     else:
         mensagem = random.choice(mensagens_com_sorte)
         player_prizes[user.id] = player_prizes.get(user.id, []) + [prize["name"]]
-        mensagem_apocaliptica = random.choice(mensagens_apocalipticas).format(user=user.display_name)
-        await ctx.send(mensagem_apocaliptica)
+        daily_box_wins[user.id] = daily_box_wins.get(user.id, 0) + 1
+        # Envia uma mensagem extra com efeito apocalíptico
+        mensagem_extra = random.choice(mensagens_apocalipticas).format(user=user.display_name)
+        await ctx.send(embed=discord.Embed(
+            title="Força do Apocalipse",
+            description=mensagem_extra,
+            color=discord.Color.purple()
+        ))
 
     player_box_opens[user.id] = player_box_opens.get(user.id, 0) + 1
+    last_attempt_time[user.id] = time.time()
 
     embed = discord.Embed(
-        title="🎁 Você abriu a Caixa de Presentes!",
-        description=(f"{user.mention}, {mensagem} Você ganhou: **{prize['name']}**!"
-                     if prize["name"] != "SEM SORTE" else f"{user.mention}, {mensagem}"),
+        title="🎁 Caixa de Presentes Aberta!",
+        description=f"{user.mention}, {mensagem}\nVocê ganhou: **{prize['name']}**",
         color=discord.Color.gold()
     )
+    embed.set_thumbnail(url=user.avatar.url if user.avatar else user.default_avatar.url)
     embed.set_image(url=prize['image'])
-
+    embed.set_footer(text="Use os prêmios com sabedoria e continue lutando!")
     msg = await ctx.send(embed=embed)
+    
+    # Adiciona uma reação para celebrar o prêmio
     if prize["name"] != "SEM SORTE":
         await msg.add_reaction(random.choice(reacoes))
-
-    last_attempt_time[user.id] = time.time()
 
 # ---------------------------
 # COMANDO: rolardado
 # ---------------------------
 @bot.command()
 async def rolardado(ctx):
-    """Jogo de dado: se o resultado for 5 ou 6, ganha embers.
-       Cooldown: 2 horas."""
     user = ctx.author
 
+    # Verifica o cooldown (2 horas)
     if user.id in last_dado_time:
         restante = tempo_restante(last_dado_time[user.id], 7200)
         if restante > 0:
-            horas = int(restante // 3600)
-            minutos = int((restante % 3600) // 60)
-            segundos = int(restante % 60)
-            await ctx.send(f"{user.mention}, aguarde {horas}h {minutos}m {segundos}s para rolar o dado novamente.")
-            return
+            embed_cd = discord.Embed(
+                title="Dado em Preparação",
+                description=f"{user.mention}, aguarde {formatar_tempo(restante)} para rolar o dado novamente.",
+                color=discord.Color.dark_blue()
+            )
+            return await ctx.send(embed=embed_cd)
 
     last_dado_time[user.id] = time.time()
 
-    gif_url = "https://imgur.com/PEpiSuw.gif"  # GIF de rolagem do dado (altere se desejar)
+    # Embed de rolagem com GIF
     embed_rolando = discord.Embed(
         title="🎲 Rolando o Dado...",
-        description="Aguarde enquanto o dado é lançado.",
+        description="O dado está em movimento. Mantenha os olhos abertos!",
         color=discord.Color.blue()
     )
-    embed_rolando.set_image(url=gif_url)
+    embed_rolando.set_image(url="https://imgur.com/PEpiSuw.gif")
     mensagem_gif = await ctx.send(embed=embed_rolando)
-
     await asyncio.sleep(3)
 
     resultado = random.randint(1, 6)
-    mensagem_resultado = f"{user.mention} rolou o dado e saiu **{resultado}**!\n"
-
+    mensagem_resultado = f"{user.mention}, você rolou um **{resultado}**!\n"
     embers_ganhos = 0
-    if resultado == 5:
-        embers_ganhos = 5000
-        mensagem_resultado += "Parabéns! Você ganhou **5000 embers**!"
-    elif resultado == 6:
-        embers_ganhos = 6000
-        mensagem_resultado += "Parabéns! Você ganhou **6000 embers**!"
-    else:
-        mensagem_resultado += "Que pena, dessa vez a sorte não colaborou."
 
-    if embers_ganhos > 0:
-        player_embers[user.id] = player_embers.get(user.id, 0) + embers_ganhos
-        player_dado_wins[user.id] = player_dado_wins.get(user.id, 0) + 1
-        player_dado_embers[user.id] = player_dado_embers.get(user.id, 0) + embers_ganhos
-        await ctx.send(f"<@{ADMIN_ID}>, por favor, libere o prêmio para {user.mention}!")
+    # Resultados vencedores (5 ou 6) com limite diário de 3 vitórias
+    if resultado in [5, 6]:
+        if daily_dado_wins.get(user.id, 0) >= 3:
+            mensagem_resultado += "Você atingiu o limite diário de vitórias no dado. Tente novamente amanhã."
+        else:
+            embers_ganhos = 5000 if resultado == 5 else 6000
+            mensagem_resultado += f"Parabéns! Você ganhou **{embers_ganhos} embers**!"
+            daily_dado_wins[user.id] = daily_dado_wins.get(user.id, 0) + 1
+            player_dado_wins[user.id] = player_dado_wins.get(user.id, 0) + 1
+            player_dado_embers[user.id] = player_dado_embers.get(user.id, 0) + embers_ganhos
+            player_embers[user.id] = player_embers.get(user.id, 0) + embers_ganhos
+            # Notifica o admin para liberação do prêmio
+            await ctx.send(f"<@{ADMIN_ID}>, libere o prêmio para {user.mention}!")
+    else:
+        mensagem_resultado += "Que pena, a sorte não estava a seu favor desta vez."
 
     await mensagem_gif.delete()
-
     embed_resultado = discord.Embed(
         title="🎲 Resultado do Dado",
         description=mensagem_resultado,
         color=discord.Color.blue()
     )
+    embed_resultado.set_footer(text="Continue tentando e a sorte poderá mudar!")
     await ctx.send(embed=embed_resultado)
 
 # ---------------------------
@@ -210,78 +228,71 @@ async def rolardado(ctx):
 # ---------------------------
 @bot.command()
 async def roleta(ctx):
-    """Jogo de roleta russa:
-    - O usuário aciona a roleta com animação.
-    - Chance baixa de levar "tiro" (resultado ruim).
-    - Se não levar tiro, ganha **2 Token VIP**.
-    - Notifica o admin em caso de prêmio.
-    Cooldown: 2 horas."""
     user = ctx.author
 
-    # Cooldown de 2 horas para o jogo da roleta
+    # Verifica o cooldown (2 horas)
     if user.id in last_roleta_time:
         restante = tempo_restante(last_roleta_time[user.id], 7200)
         if restante > 0:
-            horas = int(restante // 3600)
-            minutos = int((restante % 3600) // 60)
-            segundos = int(restante % 60)
-            await ctx.send(f"{user.mention}, aguarde {horas}h {minutos}m {segundos}s para jogar a roleta novamente.")
-            return
+            embed_cd = discord.Embed(
+                title="Roleta em Preparação",
+                description=f"{user.mention}, aguarde {formatar_tempo(restante)} para jogar a roleta novamente.",
+                color=discord.Color.dark_purple()
+            )
+            return await ctx.send(embed=embed_cd)
 
     last_roleta_time[user.id] = time.time()
 
-    # Envia embed com GIF de roleta girando
-    gif_roleta = "https://imgur.com/5TEQXni.gif"  # Exemplo de GIF para roleta (altere se desejar)
+    # Embed animado de roleta com GIF
     embed_rodando = discord.Embed(
-        title="🔫 Jogando a Roleta Russa...",
-        description="A roleta está girando. Aguarde o resultado.",
+        title="🔫 Girando a Roleta Russa...",
+        description="A sorte está sendo decidida...",
         color=discord.Color.purple()
     )
-    embed_rodando.set_image(url=gif_roleta)
+    embed_rodando.set_image(url="https://imgur.com/5TEQXni.gif")
     msg_roleta = await ctx.send(embed=embed_rodando)
-
     await asyncio.sleep(3)
 
-    # Define a chance: 10% de levar tiro; 90% de ganhar 2 Token VIP.
+    # Define a chance: 10% de levar tiro; 90% de ganhar Token VIP
     if random.random() < 0.10:
-        # Resultado: levou tiro
-        resultado = "tiro"
-        mensagem_resultado = f"{user.mention}, a roleta parou! Infelizmente, você foi atingido!"
-        # GIF para tiro (exemplo)
-        gif_tiro = "https://imgur.com/IGfEwcg.gif"
+        mensagem_resultado = f"{user.mention}, a roleta parou e... você foi atingido!"
         embed_final = discord.Embed(
             title="🔫 Resultado da Roleta Russa",
             description=mensagem_resultado,
             color=discord.Color.red()
         )
-        embed_final.set_image(url=gif_tiro)
-        # Não há prêmio; o usuário "levou tiro"
+        embed_final.set_image(url="https://imgur.com/IGfEwcg.gif")
     else:
-        # Resultado: não levou tiro, ganha 2 Token VIP
-        resultado = "sobreviveu"
-        premio = "2 Token VIP"
-        mensagem_resultado = f"{user.mention}, parabéns! Você sobreviveu e ganhou **{premio}**!"
-        embed_final = discord.Embed(
-            title="🔫 Resultado da Roleta Russa",
-            description=mensagem_resultado,
-            color=discord.Color.green()
-        )
-        # Notifica o admin para liberar o prêmio
-        await ctx.send(f"<@{ADMIN_ID}>, por favor, libere o prêmio para {user.mention}!")
-        # Atualiza os dados do jogo da roleta
-        player_roleta_wins[user.id] = player_roleta_wins.get(user.id, 0) + 1
-        player_roleta_tokens[user.id] = player_roleta_tokens.get(user.id, 0) + 2
-        # Atualiza também o saldo geral de embers (se os tokens VIP forem contabilizados como embers)
-        player_embers[user.id] = player_embers.get(user.id, 0) + 2
+        if daily_roleta_wins.get(user.id, 0) >= 3:
+            mensagem_resultado = f"{user.mention}, você atingiu o limite diário de vitórias na roleta. Hoje, a sorte não sorri para você."
+            embed_final = discord.Embed(
+                title="🔫 Resultado da Roleta Russa",
+                description=mensagem_resultado,
+                color=discord.Color.red()
+            )
+            embed_final.set_image(url="https://imgur.com/IGfEwcg.gif")
+        else:
+            mensagem_resultado = f"{user.mention}, parabéns! Você sobreviveu e ganhou **2 Token VIP**!"
+            embed_final = discord.Embed(
+                title="🔫 Resultado da Roleta Russa",
+                description=mensagem_resultado,
+                color=discord.Color.green()
+            )
+            daily_roleta_wins[user.id] = daily_roleta_wins.get(user.id, 0) + 1
+            player_roleta_wins[user.id] = player_roleta_wins.get(user.id, 0) + 1
+            player_roleta_tokens[user.id] = player_roleta_tokens.get(user.id, 0) + 2
+            player_embers[user.id] = player_embers.get(user.id, 0) + 2
+            # Notifica o admin para liberação do prêmio
+            await ctx.send(f"<@{ADMIN_ID}>, libere o prêmio para {user.mention}!")
 
     await msg_roleta.delete()
-
-    embed_final.set_footer(text="Jogo de Roleta Russa")
+    embed_final.set_footer(text="Roleta Russa - Jogue com coragem!")
     await ctx.send(embed=embed_final)
 
 # ---------------------------
-# LOOP: Ranking dos Melhores Prêmios da Caixa (a cada 6 horas)
+# Loops de Rankings e Reset Diário
 # ---------------------------
+
 @tasks.loop(hours=6)
 async def rank_melhores_presentes():
     channel = bot.get_channel(1304040902498713631)
@@ -293,9 +304,6 @@ async def rank_melhores_presentes():
         mensagem += f"{i}. **{user.display_name}** - {len(itens_raros)} prêmios raros: {', '.join(itens_raros)}\n"
     await channel.send(mensagem)
 
-# ---------------------------
-# LOOP: Ranking de Aberturas de Caixas (a cada 6.5 horas)
-# ---------------------------
 @tasks.loop(hours=6.5)
 async def rank_aberturas_caixa():
     channel = bot.get_channel(1304040902498713631)
@@ -306,9 +314,6 @@ async def rank_aberturas_caixa():
         mensagem += f"{i}. **{user.display_name}** - {opens} caixas abertas\n"
     await channel.send(mensagem)
 
-# ---------------------------
-# LOOP: Ranking dos Prêmios dos Dados (a cada 7 horas)
-# ---------------------------
 @tasks.loop(hours=7)
 async def rank_dados():
     channel = bot.get_channel(1304040902498713631)
@@ -320,9 +325,6 @@ async def rank_dados():
         mensagem += f"{i}. **{user.display_name}** - {wins} vitórias (Total: {embers_total} embers)\n"
     await channel.send(mensagem)
 
-# ---------------------------
-# LOOP: Ranking da Roleta Russa (a cada 8 horas)
-# ---------------------------
 @tasks.loop(hours=8)
 async def rank_roleta():
     channel = bot.get_channel(1304040902498713631)
@@ -334,54 +336,52 @@ async def rank_roleta():
         mensagem += f"{i}. **{user.display_name}** - {wins} vitórias (Total: {tokens} Token VIP)\n"
     await channel.send(mensagem)
 
-# ---------------------------
-# LOOP: Resetar Rankings, Premiações e Limpar o Chat às 00:00 (verificado a cada minuto)
-# ---------------------------
 @tasks.loop(minutes=1)
 async def reset_rankings():
     now = datetime.now()
     if now.hour == 0 and now.minute == 0:
-        channel = bot.get_channel(1292879357446062162)
-        
+        canal_reset = bot.get_channel(1292879357446062162)
+        # Envia mensagens de congratulação para os melhores do dia
         rank_melhores = sorted(player_prizes.items(), key=lambda x: sum(1 for prize in x[1] if prize != "SEM SORTE"), reverse=True)
         if rank_melhores:
             melhor_jogador, _ = rank_melhores[0]
             player_embers[melhor_jogador] = player_embers.get(melhor_jogador, 0) + 100
             user = await bot.fetch_user(melhor_jogador)
-            mensagem_apocaliptica = random.choice(mensagens_apocalipticas).format(user=user.display_name)
-            await channel.send(f"{mensagem_apocaliptica}\nParabéns {user.mention}! Você recebeu **100 embers** por ser o melhor do ranking de prêmios!")
+            mensagem_extra = random.choice(mensagens_apocalipticas).format(user=user.display_name)
+            await canal_reset.send(f"{mensagem_extra}\nParabéns {user.mention}! Você recebeu **100 embers** por dominar o ranking de prêmios!")
         
         rank_aberturas = sorted(player_box_opens.items(), key=lambda x: x[1], reverse=True)
         if rank_aberturas:
             melhor_abertura, _ = rank_aberturas[0]
             player_embers[melhor_abertura] = player_embers.get(melhor_abertura, 0) + 100
             user = await bot.fetch_user(melhor_abertura)
-            mensagem_apocaliptica = random.choice(mensagens_apocalipticas).format(user=user.display_name)
-            await channel.send(f"{mensagem_apocaliptica}\nParabéns {user.mention}! Você recebeu **100 embers** por ser o melhor do ranking de aberturas de caixas!")
+            mensagem_extra = random.choice(mensagens_apocalipticas).format(user=user.display_name)
+            await canal_reset.send(f"{mensagem_extra}\nParabéns {user.mention}! Você recebeu **100 embers** por ser o maior abridor de caixas!")
         
+        # Limpa os rankings e contadores diários
         player_prizes.clear()
         player_box_opens.clear()
-        print("Rankings da Caixa resetados!")
+        daily_box_wins.clear()
+        daily_dado_wins.clear()
+        daily_roleta_wins.clear()
         
-        await channel.purge(limit=None)
-        await channel.send("🧹 O chat foi limpo para um novo começo apocalíptico!")
+        # Limpa o canal para um novo começo
+        await canal_reset.purge(limit=None)
+        await canal_reset.send("🧹 **O chat foi limpo para um novo começo apocalíptico!**")
 
-# ---------------------------
-# LOOP: Mudar o Status do Bot Periodicamente (a cada 5 minutos)
-# ---------------------------
 @tasks.loop(minutes=5)
 async def mudar_status():
     status_list = [
         "sobrevivendo ao apocalipse",
         "enfrentando hordas de zumbis",
-        "explorando novas bases",
+        "explorando novos horizontes",
         "coletando suprimentos",
         "protegendo o refúgio"
     ]
     await bot.change_presence(activity=discord.Game(random.choice(status_list)))
 
 # ---------------------------
-# Evento on_ready: Inicia os Loops
+# Evento on_ready: Inicializa os loops e notifica conexão
 # ---------------------------
 @bot.event
 async def on_ready():
