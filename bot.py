@@ -17,7 +17,7 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # ---------------------------
-# Variáveis e Estruturas de Dados
+# Variáve is e Estruturas de Dados
 # ---------------------------
 
 # Lista de prêmios para o comando abrir_caixa
